@@ -101,7 +101,7 @@ CFLAGS    += -ffunction-sections -fdata-sections
 CFLAGS    += $(INCS) $(DEFS)
 
 # Linker flags
-LDFLAGS    = -Wl,--gc-sections -Wl,-Map=$(TARGET).map $(LIBS)
+LDFLAGS    = -Wl,--gc-sections -Wl,-Map=$(TARGET).map $(LIBS) -Tsrc/$(MCU_UC)_FLASH.ld
 
 # Enable Semihosting
 LDFLAGS   += --specs=rdimon.specs -lc -lrdimon

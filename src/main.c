@@ -80,11 +80,26 @@ int main(void)
 
 
   /* Add your application code here */
+  RCC->APB2ENR |= RCC_APB2ENR_IOPCEN;
+  // Configures PC8 to push-pull output
+  GPIOC->CRH = (GPIOC->CRH & 0xFFFFFFF0) | 0x2;
+  // Configures PC9 to push-pull output
+  GPIOC->CRH = (GPIOC->CRH & 0xFFFFFF0F) | 0x20;
 
-
+  volatile uint32_t delay;
   /* Infinite loop */
-  while (1)
-  {
+  uint8_t count = 0;
+  while (1) {
+    for (delay = 0; delay < 300000; delay++);
+    GPIOC->BSRR = (1 << 8);
+    if (count == 0)
+      GPIOC->BSRR = (1 << 9);
+    for (delay = 0; delay < 300000; delay++);
+    GPIOC->BRR = (1 << 8);
+    if (count == 4)
+      GPIOC->BRR = (1 << 9);
+    count++;
+    count %= 8;
   }
 }
 
