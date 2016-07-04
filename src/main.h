@@ -1,6 +1,6 @@
 /**
   ******************************************************************************
-  * @file    Templates/Inc/main.h 
+  * @file    Templates/Inc/main.h
   * @author  MCD Application Team
   * @version V1.4.0
   * @date    29-April-2016
@@ -34,7 +34,7 @@
   *
   ******************************************************************************
   */
-  
+
 /* Define to prevent recursive inclusion -------------------------------------*/
 #ifndef __MAIN_H
 #define __MAIN_H
