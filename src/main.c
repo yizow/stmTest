@@ -55,6 +55,10 @@ void SystemClock_Config(void);
 
 /* Private functions ---------------------------------------------------------*/
 
+/* Defines -------------------------------------------------------------------*/
+#define BLUE_LED 8
+#define GREEN_LED 9
+#define BUTTON 0
 /**
   * @brief  Main program
   * @param  None
@@ -80,26 +84,31 @@ int main(void)
 
 
   /* Add your application code here */
-  RCC->APB2ENR |= RCC_APB2ENR_IOPCEN;
+  RCC->APB2ENR |= RCC_APB2ENR_IOPCEN | RCC_APB2ENR_IOPAEN;
   // Configures PC8 to push-pull output
   GPIOC->CRH = (GPIOC->CRH & 0xFFFFFFF0) | 0x2;
   // Configures PC9 to push-pull output
-  GPIOC->CRH = (GPIOC->CRH & 0xFFFFFF0F) | 0x20;
+  GPIOC->CRH = (GPIOC->CRH & 0xFFFFFF0F) | (0x2 << 4);
+  // Configures PA0 to floating input
+  GPIOA->CRL = (GPIOA->CRL & 0xFFFFFFF0) | 0x4;
 
   volatile uint32_t delay;
+  #define TOTAL_COUNT 600000
   /* Infinite loop */
-  uint8_t count = 0;
   while (1) {
-    for (delay = 0; delay < 300000; delay++);
-    GPIOC->BSRR = (1 << 8);
-    if (count == 0)
-      GPIOC->BSRR = (1 << 9);
-    for (delay = 0; delay < 300000; delay++);
-    GPIOC->BRR = (1 << 8);
-    if (count == 4)
-      GPIOC->BRR = (1 << 9);
-    count++;
-    count %= 8;
+    volatile uint8_t state;
+    if (delay % (TOTAL_COUNT/3) == 0) {
+      state = (GPIOC->ODR & (1 << BLUE_LED)) >> BLUE_LED;
+      GPIOC->BSRR = (1 << (BLUE_LED + state * 16));
+    }
+    if (delay % TOTAL_COUNT == 0) {
+      state = (GPIOC->ODR & (1 << GREEN_LED)) >> GREEN_LED;
+      GPIOC->BSRR = (1 << (GREEN_LED + state * 16));
+    }
+    delay++;
+    if (GPIOA->IDR & (1 << BUTTON))
+      delay--;
+    delay %= TOTAL_COUNT;
   }
 }
 
