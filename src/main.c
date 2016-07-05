@@ -91,6 +91,11 @@ int main(void)
   GPIOC->CRH = (GPIOC->CRH & 0xFFFFFF0F) | (0x2 << 4);
   // Configures PA0 to floating input
   GPIOA->CRL = (GPIOA->CRL & 0xFFFFFFF0) | 0x4;
+  // Enables TIM3 for pins. 24mhz system clock
+  RCC->APB1ENR |= RCC_APB1ENR_TIM3EN;
+  TIM3->PSC = 23999;  // Pre-scale by a factor of 24k
+  TIM3->ARR = 1000;   // Overflow count
+  TIM3->CR1 = TIM_CR1_CEN;
 
   volatile uint32_t delay;
   #define TOTAL_COUNT 600000
@@ -101,10 +106,13 @@ int main(void)
       state = (GPIOC->ODR & (1 << BLUE_LED)) >> BLUE_LED;
       GPIOC->BSRR = (1 << (BLUE_LED + state * 16));
     }
-    if (delay % TOTAL_COUNT == 0) {
+
+    if (TIM3->SR & TIM_SR_UIF) {
+      TIM3->SR &= ~TIM_SR_UIF;
       state = (GPIOC->ODR & (1 << GREEN_LED)) >> GREEN_LED;
       GPIOC->BSRR = (1 << (GREEN_LED + state * 16));
     }
+
     delay++;
     if (GPIOA->IDR & (1 << BUTTON))
       delay--;
