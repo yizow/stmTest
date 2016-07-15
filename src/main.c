@@ -84,41 +84,44 @@ int main(void)
 
 
   /* Add your application code here */
-  RCC->APB2ENR |= RCC_APB2ENR_IOPCEN | RCC_APB2ENR_IOPAEN;
-  // Configures PC8 to push-pull output
-  GPIOC->CRH = (GPIOC->CRH & 0xFFFFFFF0) | 0x2;
-  // Configures PC9 to push-pull output
-  GPIOC->CRH = (GPIOC->CRH & 0xFFFFFF0F) | (0x2 << 4);
+  RCC->APB2ENR |= RCC_APB2ENR_IOPCEN | RCC_APB2ENR_IOPAEN | RCC_APB2ENR_AFIOEN;
+  RCC->APB1ENR |= RCC_APB1ENR_TIM3EN;
+  // Configures PC8 to push-pull output, alternate function
+  GPIOC->CRH = (GPIOC->CRH & 0xFFFFFFF0) | (GPIO_CRH_MODE8_1 | GPIO_CRH_CNF8_1);
+  // Configures PC9 to push-pull output, alternate function
+  GPIOC->CRH = (GPIOC->CRH & 0xFFFFFF0F) | (GPIO_CRH_MODE9_1 | GPIO_CRH_CNF9_1);
   // Configures PA0 to floating input
   GPIOA->CRL = (GPIOA->CRL & 0xFFFFFFF0) | 0x4;
+
+  AFIO->MAPR = AFIO_MAPR_TIM3_REMAP; // Map PC9 to timer3 channel 4
+
   // Enables TIM3 for pins. 24mhz system clock
-  RCC->APB1ENR |= RCC_APB1ENR_TIM3EN;
-  TIM3->PSC = 23999;  // Pre-scale by a factor of 24k
-  TIM3->ARR = 1000;   // Overflow count
+  TIM3->PSC = 23999;  // Pre-scale by a factor of 24k - 1ms per tick
+  TIM3->ARR = 500;   // Overflow count
+  TIM3->CCR4 = 500; // Compare value
+  TIM3->CCR3 = 250;
+  TIM3->CCMR2 = TIM_CCMR2_OC4M_0 | TIM_CCMR2_OC4M_1 | TIM_CCMR2_OC3M_0 | TIM_CCMR2_OC3M_1; // Toggle on compare match
+  TIM3->CCER = TIM_CCER_CC4E | TIM_CCER_CC3E;   // Enable compare output
   TIM3->CR1 = TIM_CR1_CEN;
 
-  volatile uint32_t delay;
-  #define TOTAL_COUNT 600000
+  // NVIC_EnableIRQ(TIM3_IRQn);
+  // TIM3->DIER = TIM_DIER_UIE;
+
   /* Infinite loop */
   while (1) {
-    volatile uint8_t state;
-    if (delay % (TOTAL_COUNT/3) == 0) {
-      state = (GPIOC->ODR & (1 << BLUE_LED)) >> BLUE_LED;
-      GPIOC->BSRR = (1 << (BLUE_LED + state * 16));
-    }
-
-    if (TIM3->SR & TIM_SR_UIF) {
-      TIM3->SR &= ~TIM_SR_UIF;
-      state = (GPIOC->ODR & (1 << GREEN_LED)) >> GREEN_LED;
-      GPIOC->BSRR = (1 << (GREEN_LED + state * 16));
-    }
-
-    delay++;
-    if (GPIOA->IDR & (1 << BUTTON))
-      delay--;
-    delay %= TOTAL_COUNT;
   }
 }
+
+
+// void TIM3_IRQHandler(void) {
+//   volatile uint8_t state;
+//   if (TIM3->SR & TIM_SR_UIF) {
+//     TIM3->SR &= ~TIM_SR_UIF;
+//     state = (GPIOC->ODR & (1 << GREEN_LED)) >> GREEN_LED;
+//     GPIOC->BSRR = (1 << (GREEN_LED + state * 16));
+//   }
+// }
+
 
 /**
   * @brief  System Clock Configuration
@@ -189,13 +192,5 @@ void assert_failed(uint8_t* file, uint32_t line)
   }
 }
 #endif
-
-/**
-  * @}
-  */
-
-/**
-  * @}
-  */
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
