@@ -96,11 +96,11 @@ int main(void)
   AFIO->MAPR = AFIO_MAPR_TIM3_REMAP; // Map PC9 to timer3 channel 4
 
   // Enables TIM3 for pins. 24mhz system clock
-  TIM3->PSC = 23999;  // Pre-scale by a factor of 24k - 1ms per tick
-  TIM3->ARR = 500;   // Overflow count
-  TIM3->CCR4 = 500; // Compare value
-  TIM3->CCR3 = 250;
-  TIM3->CCMR2 = TIM_CCMR2_OC4M_0 | TIM_CCMR2_OC4M_1 | TIM_CCMR2_OC3M_0 | TIM_CCMR2_OC3M_1; // Toggle on compare match
+  TIM3->PSC = 2399;  // Pre-scale by a factor of 2.4k - .1ms per tick
+  TIM3->ARR = 200;   // 20ms period
+  TIM3->CCR4 = 10;   // 1 ms duty
+  TIM3->CCR3 = 20;   // 2 ms duty
+  TIM3->CCMR2 = TIM_CCMR2_OC4M_2 | TIM_CCMR2_OC4M_1 | TIM_CCMR2_OC3M_2 | TIM_CCMR2_OC3M_1; // PWM Mode 1
   TIM3->CCER = TIM_CCER_CC4E | TIM_CCER_CC3E;   // Enable compare output
   TIM3->CR1 = TIM_CR1_CEN;
 
