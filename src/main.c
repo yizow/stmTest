@@ -59,6 +59,18 @@ void SystemClock_Config(void);
 #define BLUE_LED 8
 #define GREEN_LED 9
 #define BUTTON 0
+
+#define PRESCALE_VALUE 2399
+
+// .1ms per tick
+static uint16_t PWM_SCALING = 24000000 / ((PRESCALE_VALUE + 1) * 1000);
+// Following defines are all in ms
+#define PWM_PERIOD 20 * PWM_SCALING
+#define PWM_MIN_DUTY 1 * PWM_SCALING
+#define PWM_MAX_DUTY 2 * PWM_SCALING
+#define PWM_HALF_DUTY (PWM_MAX_DUTY + PWM_MIN_DUTY) / 2
+#define PWM_TEST_DUTY PWM_MIN_DUTY + 1
+
 /**
   * @brief  Main program
   * @param  None
@@ -90,25 +102,42 @@ int main(void)
   GPIOC->CRH = (GPIOC->CRH & 0xFFFFFFF0) | (GPIO_CRH_MODE8_1 | GPIO_CRH_CNF8_1);
   // Configures PC9 to push-pull output, alternate function
   GPIOC->CRH = (GPIOC->CRH & 0xFFFFFF0F) | (GPIO_CRH_MODE9_1 | GPIO_CRH_CNF9_1);
-  // Configures PA0 to floating input
-  GPIOA->CRL = (GPIOA->CRL & 0xFFFFFFF0) | 0x4;
 
   AFIO->MAPR = AFIO_MAPR_TIM3_REMAP; // Map PC9 to timer3 channel 4
 
   // Enables TIM3 for pins. 24mhz system clock
-  TIM3->PSC = 2399;  // Pre-scale by a factor of 2.4k - .1ms per tick
-  TIM3->ARR = 200;   // 20ms period
-  TIM3->CCR4 = 10;   // 1 ms duty
-  TIM3->CCR3 = 20;   // 2 ms duty
+  TIM3->PSC = PRESCALE_VALUE;
+  TIM3->ARR = PWM_PERIOD;
+  TIM3->CCR4 = PWM_MIN_DUTY;
+  TIM3->CCR3 = PWM_MAX_DUTY;
   TIM3->CCMR2 = TIM_CCMR2_OC4M_2 | TIM_CCMR2_OC4M_1 | TIM_CCMR2_OC3M_2 | TIM_CCMR2_OC3M_1; // PWM Mode 1
   TIM3->CCER = TIM_CCER_CC4E | TIM_CCER_CC3E;   // Enable compare output
   TIM3->CR1 = TIM_CR1_CEN;
+
+  // Configures PA0 to Pull-up/pull-down input
+  GPIOA->CRL = (GPIOA->CRL & 0xFFFFFFF0) | (GPIO_CRL_CNF0_1);
+  // Enable Interrupts on Line0
+  EXTI->IMR = EXTI_IMR_MR0;
+  // Enable Interrupt on rising input on Line0
+  EXTI->FTSR = EXTI_FTSR_TR0;
+
+  NVIC_EnableIRQ(EXTI0_IRQn);
 
   // NVIC_EnableIRQ(TIM3_IRQn);
   // TIM3->DIER = TIM_DIER_UIE;
 
   /* Infinite loop */
   while (1) {
+  }
+}
+
+void EXTI0_IRQHandler(void) {
+  if (EXTI->PR & EXTI_PR_PR0) {
+    volatile uint16_t current_duty = TIM3->CCR4;
+    uint16_t increment = current_duty - PWM_MIN_DUTY;
+    increment = (increment + 1) % 5;
+    TIM3->CCR4 = PWM_MIN_DUTY + increment;
+    EXTI->PR &= EXTI_PR_PR0;
   }
 }
 
