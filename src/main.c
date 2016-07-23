@@ -38,6 +38,8 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 
+#include <stdlib.h>
+
 /** @addtogroup STM32F1xx_HAL_Examples
   * @{
   */
@@ -52,6 +54,7 @@
 /* Private variables ---------------------------------------------------------*/
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
+void increment_speed(void);
 
 /* Private functions ---------------------------------------------------------*/
 
@@ -116,41 +119,43 @@ int main(void)
 
   // Configures PA0 to Pull-up/pull-down input
   GPIOA->CRL = (GPIOA->CRL & 0xFFFFFFF0) | (GPIO_CRL_CNF0_1);
-  // Enable Interrupts on Line0
-  EXTI->IMR = EXTI_IMR_MR0;
-  // Enable Interrupt on rising input on Line0
-  EXTI->FTSR = EXTI_FTSR_TR0;
 
-  NVIC_EnableIRQ(EXTI0_IRQn);
-
-  // NVIC_EnableIRQ(TIM3_IRQn);
-  // TIM3->DIER = TIM_DIER_UIE;
+  NVIC_EnableIRQ(TIM3_IRQn);
+  TIM3->DIER = TIM_DIER_UIE;
 
   /* Infinite loop */
   while (1) {
   }
 }
 
-void EXTI0_IRQHandler(void) {
-  if (EXTI->PR & EXTI_PR_PR0) {
-    volatile uint16_t current_duty = TIM3->CCR4;
-    uint16_t increment = current_duty - PWM_MIN_DUTY;
-    increment = (increment + 1) % 5;
-    TIM3->CCR4 = PWM_MIN_DUTY + increment;
-    EXTI->PR &= EXTI_PR_PR0;
+// Used to debounce the button press.
+// Hysteresis like effect 
+// Interrupt should trigger once evry 20ms
+void TIM3_IRQHandler(void) {
+  static const uint8_t counter_max = 3;
+  static int8_t button_debounce_counter = -counter_max;
+  volatile uint8_t button_state = GPIOA->IDR & GPIO_IDR_IDR0;
+  // Button pressed
+  if (button_state) {
+    if (button_debounce_counter == 0) {
+      increment_speed();
+    }
+    if (++button_debounce_counter > counter_max) {
+      button_debounce_counter--;
+    }
+  } else { // Button not pressed
+    if (abs(--button_debounce_counter) > counter_max) {
+      button_debounce_counter++;
+    }
   }
 }
 
-
-// void TIM3_IRQHandler(void) {
-//   volatile uint8_t state;
-//   if (TIM3->SR & TIM_SR_UIF) {
-//     TIM3->SR &= ~TIM_SR_UIF;
-//     state = (GPIOC->ODR & (1 << GREEN_LED)) >> GREEN_LED;
-//     GPIOC->BSRR = (1 << (GREEN_LED + state * 16));
-//   }
-// }
-
+void increment_speed(void) {
+  volatile uint16_t current_duty = TIM3->CCR4;
+  uint16_t increment = current_duty - PWM_MIN_DUTY;
+  increment = (increment + 1) % 5;
+  TIM3->CCR4 = PWM_MIN_DUTY + increment;
+}
 
 /**
   * @brief  System Clock Configuration
